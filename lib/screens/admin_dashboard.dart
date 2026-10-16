@@ -15,6 +15,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
   @override
   Widget build(BuildContext context) {
+    final isCompact = MediaQuery.of(context).size.width < 700;
+    final views = const [
+      GroupsView(),
+      UsersView(),
+      AdminAttendanceView(),
+      AdminPaymentsView(),
+    ];
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Admin Panel - O\'quv Markazi Boshqaruvi'),
@@ -37,44 +45,52 @@ class _AdminDashboardState extends State<AdminDashboard> {
           ),
         ],
       ),
-      body: Row(
-        children: [
-          NavigationRail(
-            selectedIndex: _selectedIndex,
-            onDestinationSelected: (index) => setState(() => _selectedIndex = index),
-            labelType: NavigationRailLabelType.all,
-            backgroundColor: Colors.grey.shade100,
-            destinations: const [
-              NavigationRailDestination(
-                icon: Icon(Icons.group),
-                label: Text('Guruhlar'),
-              ),
-              NavigationRailDestination(
-                icon: Icon(Icons.people),
-                label: Text('Foydalanuvchilar'),
-              ),
-              NavigationRailDestination(
-                icon: Icon(Icons.fact_check),
-                label: Text('Davomat'),
-              ),
-              NavigationRailDestination(
-                icon: Icon(Icons.payment),
-                label: Text('To\'lovlar'),
-              ),
-            ],
-          ),
-          const VerticalDivider(thickness: 1, width: 1),
-          Expanded(
-            child: _selectedIndex == 0
-                ? const GroupsView()
-                : _selectedIndex == 1
-                    ? const UsersView()
-                    : _selectedIndex == 2
-                        ? const AdminAttendanceView()
-                        : const AdminPaymentsView(),
-          ),
-        ],
-      ),
+      bottomNavigationBar: isCompact
+          ? NavigationBar(
+              selectedIndex: _selectedIndex,
+              onDestinationSelected: (index) => setState(() => _selectedIndex = index),
+              destinations: const [
+                NavigationDestination(icon: Icon(Icons.group), label: 'Guruhlar'),
+                NavigationDestination(icon: Icon(Icons.people), label: 'Foydalanuvchilar'),
+                NavigationDestination(icon: Icon(Icons.fact_check), label: 'Davomat'),
+                NavigationDestination(icon: Icon(Icons.payment), label: 'To\'lovlar'),
+              ],
+            )
+          : null,
+      body: isCompact
+          ? views[_selectedIndex]
+          : Row(
+              children: [
+                NavigationRail(
+                  selectedIndex: _selectedIndex,
+                  onDestinationSelected: (index) => setState(() => _selectedIndex = index),
+                  labelType: NavigationRailLabelType.all,
+                  backgroundColor: Colors.grey.shade100,
+                  destinations: const [
+                    NavigationRailDestination(
+                      icon: Icon(Icons.group),
+                      label: Text('Guruhlar'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.people),
+                      label: Text('Foydalanuvchilar'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.fact_check),
+                      label: Text('Davomat'),
+                    ),
+                    NavigationRailDestination(
+                      icon: Icon(Icons.payment),
+                      label: Text('To\'lovlar'),
+                    ),
+                  ],
+                ),
+                const VerticalDivider(thickness: 1, width: 1),
+                Expanded(
+                  child: views[_selectedIndex],
+                ),
+              ],
+            ),
     );
   }
 }
@@ -92,8 +108,11 @@ class GroupsView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 12,
+            runSpacing: 12,
             children: [
               const Text(
                 'Barcha Guruhlar',
@@ -204,7 +223,7 @@ class GroupsView extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    value: selectedTeacherId,
+                    initialValue: selectedTeacherId,
                     decoration: const InputDecoration(labelText: 'O\'qituvchi *', border: OutlineInputBorder()),
                     items: teachers.map((t) => DropdownMenuItem(value: t.id, child: Text('${t.name} (hisob faollashgan)'))).toList(),
                     onChanged: (val) => selectedTeacherId = val,
@@ -320,7 +339,7 @@ class GroupsView extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
-                    value: selectedStatus,
+                    initialValue: selectedStatus,
                     decoration: const InputDecoration(labelText: 'Holat', border: OutlineInputBorder()),
                     items: const [
                       DropdownMenuItem(value: 'Faol', child: Text('Faol')),
@@ -472,8 +491,11 @@ class UsersView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 12,
+            runSpacing: 12,
             children: [
               const Text(
                 'Barcha Foydalanuvchilar (Admin, O\'qituvchi, Talaba)',
@@ -570,7 +592,7 @@ class UsersView extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<UserRole>(
-                  value: selectedRole,
+                  initialValue: selectedRole,
                   decoration: const InputDecoration(labelText: 'Rolni tanlang'),
                   items: const [
                     DropdownMenuItem(value: UserRole.student, child: Text('Talaba')),
@@ -584,7 +606,7 @@ class UsersView extends StatelessWidget {
                 if (selectedRole == UserRole.student && groups.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    value: selectedGroupId,
+                    initialValue: selectedGroupId,
                     decoration: const InputDecoration(labelText: 'Guruhni biriktirish'),
                     items: groups.map((g) => DropdownMenuItem(value: g.id, child: Text(g.name))).toList(),
                     onChanged: (val) => selectedGroupId = val,
@@ -631,8 +653,11 @@ class AdminAttendanceView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 12,
+            runSpacing: 12,
             children: [
               const Text(
                 'Davomat Hisobotlari va Boshqaruvi',
@@ -706,7 +731,7 @@ class AdminAttendanceView extends StatelessWidget {
         content: SizedBox(
           width: 350,
           child: DropdownButtonFormField<String>(
-            value: selectedGroupId,
+            initialValue: selectedGroupId,
             decoration: const InputDecoration(labelText: 'Guruh'),
             items: groups.map((g) => DropdownMenuItem(value: g.id, child: Text(g.name))).toList(),
             onChanged: (val) => selectedGroupId = val,

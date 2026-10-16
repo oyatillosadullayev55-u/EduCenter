@@ -64,20 +64,25 @@ class TeacherDashboard extends StatelessWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                Wrap(
+                                  alignment: WrapAlignment.spaceBetween,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  spacing: 8,
+                                  runSpacing: 8,
                                   children: [
                                     Text(
                                       group.name,
                                       style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.teal),
                                     ),
-                                    Row(
+                                    Wrap(
+                                      spacing: 8,
+                                      runSpacing: 8,
+                                      crossAxisAlignment: WrapCrossAlignment.center,
                                       children: [
                                         Chip(
                                           label: Text('Jadval: ${group.schedule}'),
                                           backgroundColor: Colors.teal.shade50,
                                         ),
-                                        const SizedBox(width: 8),
                                         ElevatedButton.icon(
                                           style: ElevatedButton.styleFrom(
                                             backgroundColor: Colors.teal,
