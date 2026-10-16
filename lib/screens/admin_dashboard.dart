@@ -478,13 +478,28 @@ class GroupsView extends StatelessWidget {
   }
 }
 
-class UsersView extends StatelessWidget {
+class UsersView extends StatefulWidget {
   const UsersView({super.key});
+
+  @override
+  State<UsersView> createState() => _UsersViewState();
+}
+
+class _UsersViewState extends State<UsersView> {
+  String _selectedRoleFilter = 'Barchasi';
 
   @override
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
-    final users = appState.users;
+    final allUsers = appState.users;
+    final groups = appState.groups;
+
+    final filteredUsers = allUsers.where((u) {
+      if (_selectedRoleFilter == 'O\'qituvchilar') return u.role == UserRole.teacher;
+      if (_selectedRoleFilter == 'Talabalar') return u.role == UserRole.student;
+      if (_selectedRoleFilter == 'Adminlar') return u.role == UserRole.admin;
+      return true;
+    }).toList();
 
     return Padding(
       padding: const EdgeInsets.all(24.0),
@@ -497,74 +512,188 @@ class UsersView extends StatelessWidget {
             spacing: 12,
             runSpacing: 12,
             children: [
-              const Text(
-                'Barcha Foydalanuvchilar (Admin, O\'qituvchi, Talaba)',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.indigo),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Foydalanuvchilar va Kirish Parollari',
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.indigo),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'O\'qituvchi va talabalarni qo\'shish, ularga saytga kirish parolini yaratish va boshqarish',
+                    style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
+                  ),
+                ],
               ),
               ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo, foregroundColor: Colors.white),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.indigo,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                ),
                 icon: const Icon(Icons.person_add),
-                label: const Text('Foydalanuvchi qo\'shish'),
-                onPressed: () => _showAddUserDialog(context, appState.groups),
+                label: const Text('Yangi foydalanuvchi qo\'shish'),
+                onPressed: () => _showAddUserDialog(context, appState),
               ),
             ],
           ),
           const SizedBox(height: 16),
+          // Role filters
+          Wrap(
+            spacing: 8,
+            children: ['Barchasi', 'O\'qituvchilar', 'Talabalar', 'Adminlar'].map((filter) {
+              final isSelected = _selectedRoleFilter == filter;
+              return ChoiceChip(
+                label: Text(filter),
+                selected: isSelected,
+                selectedColor: Colors.indigo.shade100,
+                onSelected: (selected) {
+                  if (selected) setState(() => _selectedRoleFilter = filter);
+                },
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 14),
           Expanded(
-            child: ListView.builder(
-              itemCount: users.length,
-              itemBuilder: (context, index) {
-                final user = users[index];
-                String roleStr = user.role == UserRole.admin
-                    ? 'Admin'
-                    : user.role == UserRole.teacher
-                        ? 'O\'qituvchi'
-                        : 'Talaba';
+            child: filteredUsers.isEmpty
+                ? const Center(child: Text('Hech qanday foydalanuvchi topilmadi'))
+                : ListView.builder(
+                    itemCount: filteredUsers.length,
+                    itemBuilder: (context, index) {
+                      final user = filteredUsers[index];
+                      final roleStr = user.role == UserRole.admin
+                          ? 'Admin'
+                          : user.role == UserRole.teacher
+                              ? 'O\'qituvchi'
+                              : 'Talaba';
 
-                Color roleColor = user.role == UserRole.admin
-                    ? Colors.purple
-                    : user.role == UserRole.teacher
-                        ? Colors.orange
-                        : Colors.green;
+                      final roleColor = user.role == UserRole.admin
+                          ? Colors.purple
+                          : user.role == UserRole.teacher
+                              ? Colors.teal
+                              : Colors.orange;
 
-                return Card(
-                  elevation: 2,
-                  margin: const EdgeInsets.only(bottom: 8),
-                  child: ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: roleColor.withValues(alpha: 0.2),
-                      child: Icon(
-                        user.role == UserRole.admin
-                            ? Icons.admin_panel_settings
-                            : user.role == UserRole.teacher
-                                ? Icons.school
-                                : Icons.person,
-                        color: roleColor,
-                      ),
-                    ),
-                    title: Text(user.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: Text('Email: ${user.email} | Parol: ${user.password} · faollashmagan'),
-                    trailing: Chip(
-                      label: Text(roleStr),
-                      backgroundColor: roleColor.withValues(alpha: 0.1),
-                      labelStyle: TextStyle(color: roleColor, fontWeight: FontWeight.bold),
-                    ),
+                      String extraInfo = '';
+                      if (user.role == UserRole.student) {
+                        try {
+                          final g = groups.firstWhere((grp) => grp.id == user.groupId);
+                          extraInfo = 'Guruh: ${g.name}';
+                        } catch (_) {
+                          extraInfo = 'Guruh: biriktirilmagan';
+                        }
+                      } else if (user.role == UserRole.teacher) {
+                        final assigned = groups.where((grp) => grp.teacherId == user.id).length;
+                        extraInfo = 'Biriktirilgan guruhlar: $assigned ta';
+                      }
+
+                      final isCurrentUser = appState.currentUser?.id == user.id;
+
+                      return Card(
+                        elevation: 2,
+                        margin: const EdgeInsets.only(bottom: 10),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: roleColor.withValues(alpha: 0.15),
+                              child: Icon(
+                                user.role == UserRole.admin
+                                    ? Icons.admin_panel_settings
+                                    : user.role == UserRole.teacher
+                                        ? Icons.school
+                                        : Icons.person,
+                                color: roleColor,
+                              ),
+                            ),
+                            title: Row(
+                              children: [
+                                Text(user.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                if (isCurrentUser) ...[
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.green.shade100,
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: const Text('Siz', style: TextStyle(color: Colors.green, fontSize: 11, fontWeight: FontWeight.bold)),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            subtitle: Padding(
+                              padding: const EdgeInsets.only(top: 4.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.email_outlined, size: 14, color: Colors.grey),
+                                      const SizedBox(width: 4),
+                                      Text('Email: ${user.email}', style: const TextStyle(fontWeight: FontWeight.w500)),
+                                      const SizedBox(width: 12),
+                                      const Icon(Icons.key, size: 14, color: Colors.amber),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'Parol: ${user.password}',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.indigo.shade800,
+                                          backgroundColor: Colors.indigo.shade50,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  if (extraInfo.isNotEmpty) ...[
+                                    const SizedBox(height: 2),
+                                    Text(extraInfo, style: TextStyle(color: Colors.grey.shade700, fontSize: 12)),
+                                  ],
+                                ],
+                              ),
+                            ),
+                            trailing: Wrap(
+                              spacing: 8,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                Chip(
+                                  label: Text(roleStr),
+                                  backgroundColor: roleColor.withValues(alpha: 0.1),
+                                  labelStyle: TextStyle(color: roleColor, fontWeight: FontWeight.bold),
+                                  visualDensity: VisualDensity.compact,
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.edit, color: Colors.blue),
+                                  tooltip: 'Foydalanuvchi ma\'lumotlari va parolini o\'zgartirish',
+                                  onPressed: () => _showEditUserDialog(context, appState, user),
+                                ),
+                                if (!isCurrentUser)
+                                  IconButton(
+                                    icon: const Icon(Icons.delete_outline, color: Colors.red),
+                                    tooltip: 'Foydalanuvchini o\'chirish',
+                                    onPressed: () => _confirmDeleteUser(context, appState, user),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
                   ),
-                );
-              },
-            ),
           ),
         ],
       ),
     );
   }
 
-  void _showAddUserDialog(BuildContext context, List<StudyGroup> groups) {
+  void _showAddUserDialog(BuildContext context, AppState appState) {
     final nameController = TextEditingController();
     final emailController = TextEditingController();
     final passwordController = TextEditingController(text: '12345');
-    UserRole selectedRole = UserRole.student;
-    String? selectedGroupId = groups.isNotEmpty ? groups.first.id : null;
+    UserRole selectedRole = UserRole.teacher;
+    String? selectedGroupId = appState.groups.isNotEmpty ? appState.groups.first.id : null;
+    String? localError;
 
     showDialog(
       context: context,
@@ -572,68 +701,214 @@ class UsersView extends StatelessWidget {
         builder: (context, setStateDialog) => AlertDialog(
           title: const Text('Yangi foydalanuvchi qo\'shish'),
           content: SizedBox(
-            width: 400,
+            width: 440,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      'O\'qituvchi yoki talaba uchun login va parol yarating. Ular aynan shu parol bilan saytga kira oladi.',
+                      style: TextStyle(fontSize: 12, color: Colors.blue),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  DropdownButtonFormField<UserRole>(
+                    initialValue: selectedRole,
+                    decoration: const InputDecoration(labelText: 'Foydalanuvchi roli *', border: OutlineInputBorder()),
+                    items: const [
+                      DropdownMenuItem(value: UserRole.teacher, child: Text('O\'qituvchi (Teacher)')),
+                      DropdownMenuItem(value: UserRole.student, child: Text('Talaba (Student)')),
+                      DropdownMenuItem(value: UserRole.admin, child: Text('Admin')),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) setStateDialog(() => selectedRole = val);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: nameController,
+                    decoration: const InputDecoration(labelText: 'F.I.O. (Ism va Familiya) *', border: OutlineInputBorder()),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: const InputDecoration(labelText: 'Elektron pochta (Email - Login) *', border: OutlineInputBorder()),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: passwordController,
+                    decoration: InputDecoration(
+                      labelText: 'Kirish paroli *',
+                      border: const OutlineInputBorder(),
+                      suffixIcon: IconButton(
+                        icon: const Icon(Icons.refresh),
+                        tooltip: 'Tasodifiy parol generatsiya qilish',
+                        onPressed: () {
+                          final rand = (10000 + DateTime.now().millisecond * 89) % 90000 + 10000;
+                          setStateDialog(() {
+                            passwordController.text = 'edu$rand';
+                          });
+                        },
+                      ),
+                    ),
+                  ),
+                  if (selectedRole == UserRole.student && appState.groups.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      initialValue: selectedGroupId,
+                      decoration: const InputDecoration(labelText: 'Guruhni biriktirish', border: OutlineInputBorder()),
+                      items: appState.groups.map((g) => DropdownMenuItem(value: g.id, child: Text('${g.name} (${g.courseName})'))).toList(),
+                      onChanged: (val) => selectedGroupId = val,
+                    ),
+                  ],
+                  if (localError != null) ...[
+                    const SizedBox(height: 10),
+                    Text(localError!, style: const TextStyle(color: Colors.red, fontSize: 13), textAlign: TextAlign.center),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Bekor qilish')),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo, foregroundColor: Colors.white),
+              onPressed: () {
+                final name = nameController.text.trim();
+                final email = emailController.text.trim();
+                final password = passwordController.text.trim();
+                if (name.isEmpty || email.isEmpty || password.isEmpty) {
+                  setStateDialog(() => localError = 'Barcha maydonlarni to\'ldiring!');
+                  return;
+                }
+                final success = appState.addUser(
+                  name,
+                  email,
+                  password,
+                  selectedRole,
+                  groupId: selectedRole == UserRole.student ? selectedGroupId : null,
+                );
+                if (!success) {
+                  setStateDialog(() => localError = 'Bu email manzil allaqachon mavjud!');
+                  return;
+                }
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Yangi foydalanuvchi "$name" muvaffaqiyatli qo\'shildi! Parol: $password'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              },
+              child: const Text('Yaratish va Saqlash'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showEditUserDialog(BuildContext context, AppState appState, User user) {
+    final nameController = TextEditingController(text: user.name);
+    final emailController = TextEditingController(text: user.email);
+    final passwordController = TextEditingController(text: user.password);
+    String? selectedGroupId = user.groupId ?? (appState.groups.isNotEmpty ? appState.groups.first.id : null);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('${user.name} ma\'lumotlarini tahrirlash'),
+        content: SizedBox(
+          width: 440,
+          child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
                   controller: nameController,
-                  decoration: const InputDecoration(labelText: 'F.I.O. (Ism Familiya)'),
+                  decoration: const InputDecoration(labelText: 'F.I.O. (Ism va Familiya)', border: OutlineInputBorder()),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: emailController,
-                  decoration: const InputDecoration(labelText: 'Elektron pochta (Email)'),
+                  decoration: const InputDecoration(labelText: 'Elektron pochta (Email)', border: OutlineInputBorder()),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: passwordController,
-                  decoration: const InputDecoration(labelText: 'Parol (boshlang\'ich)'),
+                  decoration: const InputDecoration(
+                    labelText: 'Yangi kirish paroli',
+                    helperText: 'Foydalanuvchi saytga kirishi uchun yangi parol',
+                    border: OutlineInputBorder(),
+                  ),
                 ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<UserRole>(
-                  initialValue: selectedRole,
-                  decoration: const InputDecoration(labelText: 'Rolni tanlang'),
-                  items: const [
-                    DropdownMenuItem(value: UserRole.student, child: Text('Talaba')),
-                    DropdownMenuItem(value: UserRole.teacher, child: Text('O\'qituvchi')),
-                    DropdownMenuItem(value: UserRole.admin, child: Text('Admin')),
-                  ],
-                  onChanged: (val) {
-                    if (val != null) setStateDialog(() => selectedRole = val);
-                  },
-                ),
-                if (selectedRole == UserRole.student && groups.isNotEmpty) ...[
+                if (user.role == UserRole.student && appState.groups.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
                     initialValue: selectedGroupId,
-                    decoration: const InputDecoration(labelText: 'Guruhni biriktirish'),
-                    items: groups.map((g) => DropdownMenuItem(value: g.id, child: Text(g.name))).toList(),
+                    decoration: const InputDecoration(labelText: 'Biriktirilgan guruh', border: OutlineInputBorder()),
+                    items: appState.groups.map((g) => DropdownMenuItem(value: g.id, child: Text('${g.name} (${g.courseName})'))).toList(),
                     onChanged: (val) => selectedGroupId = val,
                   ),
                 ],
               ],
             ),
           ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Bekor qilish')),
-            ElevatedButton(
-              onPressed: () {
-                if (nameController.text.isNotEmpty && emailController.text.isNotEmpty) {
-                  Provider.of<AppState>(context, listen: false).addUser(
-                    nameController.text,
-                    emailController.text,
-                    passwordController.text,
-                    selectedRole,
-                    groupId: selectedRole == UserRole.student ? selectedGroupId : null,
-                  );
-                  Navigator.pop(context);
-                }
-              },
-              child: const Text('Qo\'shish'),
-            ),
-          ],
         ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Bekor qilish')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.indigo, foregroundColor: Colors.white),
+            onPressed: () {
+              if (nameController.text.isNotEmpty && emailController.text.isNotEmpty) {
+                appState.updateUser(
+                  user.id,
+                  nameController.text,
+                  emailController.text,
+                  passwordController.text,
+                  groupId: user.role == UserRole.student ? selectedGroupId : null,
+                );
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Ma\'lumotlar va yangi parol saqlandi!'), backgroundColor: Colors.green),
+                );
+              }
+            },
+            child: const Text('Saqlash'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeleteUser(BuildContext context, AppState appState, User user) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Foydalanuvchini o\'chirish'),
+        content: Text('Haqiqatan ham "${user.name}" (${user.email}) ni tizimdan o\'chirmoqchimisiz?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Bekor qilish')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            onPressed: () {
+              appState.deleteUser(user.id);
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('"${user.name}" o\'chirildi')),
+              );
+            },
+            child: const Text('O\'chirish'),
+          ),
+        ],
       ),
     );
   }

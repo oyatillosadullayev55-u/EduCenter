@@ -12,6 +12,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  bool _obscurePassword = true;
   String? _errorMessage;
 
   void _handleLogin() {
@@ -24,7 +25,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final appState = Provider.of<AppState>(context, listen: false);
     final success = appState.login(email, password);
     if (!success) {
-      setState(() => _errorMessage = 'Email yoki parol noto\'g\'ri!');
+      setState(() => _errorMessage = 'Email yoki parol noto\'g\'ri! Qaytadan tekshiring.');
     }
   }
 
@@ -34,23 +35,24 @@ class _LoginScreenState extends State<LoginScreen> {
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [Colors.indigo.shade800, Colors.blue.shade500],
+            colors: [Colors.indigo.shade900, Colors.blue.shade700],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
         ),
         child: Center(
           child: Container(
-            width: 420,
+            width: 440,
+            margin: const EdgeInsets.all(16),
             padding: const EdgeInsets.all(32),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.2),
-                  blurRadius: 16,
-                  offset: const Offset(0, 8),
+                  color: Colors.black.withValues(alpha: 0.25),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
                 ),
               ],
             ),
@@ -60,7 +62,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const Icon(Icons.school, size: 64, color: Colors.indigo),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   const Text(
                     'O\'quv Markazi CRM',
                     textAlign: TextAlign.center,
@@ -70,38 +72,54 @@ class _LoginScreenState extends State<LoginScreen> {
                       color: Colors.indigo,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   const Text(
-                    'Tizimga kirish uchun email va parolingizni kiriting',
+                    'Tizimga kirish (Admin, O\'qituvchi, Talaba)',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.grey),
+                    style: TextStyle(color: Colors.grey, fontSize: 13),
                   ),
                   const SizedBox(height: 24),
                   TextField(
                     controller: _emailController,
+                    keyboardType: TextInputType.emailAddress,
                     decoration: InputDecoration(
                       labelText: 'Elektron pochta (Email)',
+                      hintText: 'masalan: admin@educenter.uz',
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                      prefixIcon: const Icon(Icons.email),
+                      prefixIcon: const Icon(Icons.email_outlined),
                     ),
                   ),
                   const SizedBox(height: 16),
                   TextField(
                     controller: _passwordController,
-                    obscureText: true,
+                    obscureText: _obscurePassword,
                     decoration: InputDecoration(
                       labelText: 'Parol',
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                      prefixIcon: const Icon(Icons.lock),
+                      prefixIcon: const Icon(Icons.lock_outline),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                        ),
+                        onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                      ),
                     ),
                     onSubmitted: (_) => _handleLogin(),
                   ),
                   if (_errorMessage != null) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      _errorMessage!,
-                      style: const TextStyle(color: Colors.red, fontSize: 13),
-                      textAlign: TextAlign.center,
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.red.shade200),
+                      ),
+                      child: Text(
+                        _errorMessage!,
+                        style: TextStyle(color: Colors.red.shade800, fontSize: 13),
+                        textAlign: TextAlign.center,
+                      ),
                     ),
                   ],
                   const SizedBox(height: 20),
@@ -111,47 +129,51 @@ class _LoginScreenState extends State<LoginScreen> {
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      elevation: 2,
                     ),
                     onPressed: _handleLogin,
-                    child: const Text('Kirish', style: TextStyle(fontSize: 16)),
+                    child: const Text('Kirish', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   ),
                   const SizedBox(height: 24),
                   const Divider(),
                   const SizedBox(height: 12),
                   const Text(
-                    'Tezkor sinov hisoblari (Demo):',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black54),
+                    'Boshlang\'ich tizim administratori:',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black87),
                   ),
                   const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      ActionChip(
-                        label: const Text('Admin (admin123)'),
-                        onPressed: () {
-                          _emailController.text = 'admin@educenter.uz';
-                          _passwordController.text = 'admin123';
-                          _handleLogin();
-                        },
-                      ),
-                      ActionChip(
-                        label: const Text('O\'qituvchi (12345)'),
-                        onPressed: () {
-                          _emailController.text = 'teacher1@educenter.uz';
-                          _passwordController.text = '12345';
-                          _handleLogin();
-                        },
-                      ),
-                      ActionChip(
-                        label: const Text('Talaba (12345)'),
-                        onPressed: () {
-                          _emailController.text = 'student1@educenter.uz';
-                          _passwordController.text = '12345';
-                          _handleLogin();
-                        },
-                      ),
-                    ],
+                  ActionChip(
+                    avatar: const Icon(Icons.admin_panel_settings, size: 18, color: Colors.indigo),
+                    label: const Text('Admin (admin@educenter.uz / admin123)'),
+                    backgroundColor: Colors.indigo.shade50,
+                    side: BorderSide(color: Colors.indigo.shade200),
+                    onPressed: () {
+                      _emailController.text = 'admin@educenter.uz';
+                      _passwordController.text = 'admin123';
+                      _handleLogin();
+                    },
+                  ),
+                  const SizedBox(height: 14),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.blue.shade200),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.info_outline, size: 20, color: Colors.blue.shade800),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Admin sifatida kirib, "Foydalanuvchilar" bo\'limida o\'qituvchi va talabalarni paroli bilan qo\'shishingiz mumkin. Shundan so\'ng ular o\'z emaillari va berilgan parol orqali tizimga kira oladi.',
+                            style: TextStyle(fontSize: 12, color: Colors.blue.shade900, height: 1.3),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),

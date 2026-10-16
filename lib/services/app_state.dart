@@ -1,73 +1,138 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/app_models.dart';
 
 class AppState extends ChangeNotifier {
   User? _currentUser;
-
   User? get currentUser => _currentUser;
 
-  // Mock initial users with passwords
-  final List<User> users = [
-    User(id: 'u1', name: 'Alisher Admin', role: UserRole.admin, email: 'admin@educenter.uz', password: 'admin123'),
-    User(id: 'u2', name: 'Rustam O\'qituvchi', role: UserRole.teacher, email: 'teacher1@educenter.uz', password: '12345', groupIds: ['g1']),
-    User(id: 'u3', name: 'Malika O\'qituvchi', role: UserRole.teacher, email: 'teacher2@educenter.uz', password: '12345', groupIds: ['g2']),
-    User(id: 'u4', name: 'Jasur Talaba', role: UserRole.student, email: 'student1@educenter.uz', password: '12345', groupId: 'g1'),
-    User(id: 'u5', name: 'Zulayho Talaba', role: UserRole.student, email: 'student2@educenter.uz', password: '12345', groupId: 'g1'),
-    User(id: 'u6', name: 'Behzod Talaba', role: UserRole.student, email: 'student3@educenter.uz', password: '12345', groupId: 'g2'),
-  ];
-
-  // Mock initial groups
-  final List<StudyGroup> groups = [
-    StudyGroup(
-      id: 'g1',
-      name: 'ING-A1-01',
-      courseName: 'IELTS tayyorgarlik',
-      teacherId: 'u2',
-      studentIds: ['u4', 'u5'],
-      schedule: 'Dushanba, Chorshanba, Juma 09:00 - 10:30',
-      price: 800000.0,
-      room: '201-xona',
-      lessonDays: ['Dushanba', 'Chorshanba', 'Juma'],
-      startTime: '09:00',
-      endTime: '10:30',
-      startDate: '2025-03-01',
-      endDate: '2025-06-01',
-      status: 'Faol',
-      note: 'Intensiv guruh',
-    ),
-    StudyGroup(
-      id: 'g2',
-      name: 'PYTHON-202',
-      courseName: 'Python va Django',
-      teacherId: 'u3',
-      studentIds: ['u6'],
-      schedule: 'Seshanba, Payshanba, Shanba 10:00 - 12:00',
-      price: 700000.0,
-      room: '302-xona',
-      lessonDays: ['Seshanba', 'Payshanba', 'Shanba'],
-      startTime: '10:00',
-      endTime: '12:00',
-      startDate: '2025-03-01',
-      endDate: '2025-06-01',
-      status: 'Faol',
-      note: 'Backend kursi',
+  List<User> users = [
+    User(
+      id: 'u1',
+      name: 'Asosiy Admin',
+      role: UserRole.admin,
+      email: 'admin@educenter.uz',
+      password: 'admin123',
     ),
   ];
 
-  // Attendance records storage
-  final List<AttendanceRecord> attendanceRecords = [];
+  List<StudyGroup> groups = [];
+  List<AttendanceRecord> attendanceRecords = [];
+  List<PaymentRecord> paymentRecords = [];
 
-  // Payment records storage
-  final List<PaymentRecord> paymentRecords = [
-    PaymentRecord(studentId: 'u4', groupId: 'g1', month: '2025-03', totalAmount: 800000.0, paidAmount: 800000.0),
-    PaymentRecord(studentId: 'u5', groupId: 'g1', month: '2025-03', totalAmount: 800000.0, paidAmount: 300000.0),
-    PaymentRecord(studentId: 'u6', groupId: 'g2', month: '2025-03', totalAmount: 700000.0, paidAmount: 0.0),
-  ];
+  bool _isInitialized = false;
+  bool get isInitialized => _isInitialized;
+
+  AppState() {
+    _loadFromStorage();
+  }
+
+  Future<void> _loadFromStorage() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+
+      final usersJson = prefs.getString('educenter_users');
+      if (usersJson != null && usersJson.isNotEmpty) {
+        final List<dynamic> decoded = jsonDecode(usersJson);
+        users = decoded.map((item) => User.fromJson(item as Map<String, dynamic>)).toList();
+        // Ensure at least one admin exists
+        if (!users.any((u) => u.role == UserRole.admin)) {
+          users.insert(
+            0,
+            User(
+              id: 'u1',
+              name: 'Asosiy Admin',
+              role: UserRole.admin,
+              email: 'admin@educenter.uz',
+              password: 'admin123',
+            ),
+          );
+        }
+      }
+
+      final groupsJson = prefs.getString('educenter_groups');
+      if (groupsJson != null && groupsJson.isNotEmpty) {
+        final List<dynamic> decoded = jsonDecode(groupsJson);
+        groups = decoded.map((item) => StudyGroup.fromJson(item as Map<String, dynamic>)).toList();
+      } else {
+        // Initial default groups
+        groups = [
+          StudyGroup(
+            id: 'g1',
+            name: 'ING-A1-01',
+            courseName: 'IELTS tayyorgarlik',
+            teacherId: '',
+            studentIds: [],
+            schedule: 'Dushanba, Chorshanba, Juma 09:00 - 10:30',
+            price: 800000.0,
+            room: '201-xona',
+            lessonDays: ['Dushanba', 'Chorshanba', 'Juma'],
+            startTime: '09:00',
+            endTime: '10:30',
+            startDate: '2025-03-01',
+            endDate: '2025-06-01',
+            status: 'Faol',
+            note: 'Intensiv guruh',
+          ),
+          StudyGroup(
+            id: 'g2',
+            name: 'PYTHON-202',
+            courseName: 'Python va Django',
+            teacherId: '',
+            studentIds: [],
+            schedule: 'Seshanba, Payshanba, Shanba 10:00 - 12:00',
+            price: 700000.0,
+            room: '302-xona',
+            lessonDays: ['Seshanba', 'Payshanba', 'Shanba'],
+            startTime: '10:00',
+            endTime: '12:00',
+            startDate: '2025-03-01',
+            endDate: '2025-06-01',
+            status: 'Faol',
+            note: 'Backend kursi',
+          ),
+        ];
+        await _saveToStorage();
+      }
+
+      final attendanceJson = prefs.getString('educenter_attendance');
+      if (attendanceJson != null && attendanceJson.isNotEmpty) {
+        final List<dynamic> decoded = jsonDecode(attendanceJson);
+        attendanceRecords = decoded.map((item) => AttendanceRecord.fromJson(item as Map<String, dynamic>)).toList();
+      }
+
+      final paymentsJson = prefs.getString('educenter_payments');
+      if (paymentsJson != null && paymentsJson.isNotEmpty) {
+        final List<dynamic> decoded = jsonDecode(paymentsJson);
+        paymentRecords = decoded.map((item) => PaymentRecord.fromJson(item as Map<String, dynamic>)).toList();
+      }
+    } catch (e) {
+      debugPrint('Error loading from storage: $e');
+    } finally {
+      _isInitialized = true;
+      notifyListeners();
+    }
+  }
+
+  Future<void> _saveToStorage() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('educenter_users', jsonEncode(users.map((u) => u.toJson()).toList()));
+      await prefs.setString('educenter_groups', jsonEncode(groups.map((g) => g.toJson()).toList()));
+      await prefs.setString('educenter_attendance', jsonEncode(attendanceRecords.map((a) => a.toJson()).toList()));
+      await prefs.setString('educenter_payments', jsonEncode(paymentRecords.map((p) => p.toJson()).toList()));
+    } catch (e) {
+      debugPrint('Error saving to storage: $e');
+    }
+  }
 
   bool login(String email, String password) {
     try {
-      final user = users.firstWhere((u) => u.email.toLowerCase() == email.toLowerCase());
-      if (user.password == password) {
+      final user = users.firstWhere(
+        (u) => u.email.trim().toLowerCase() == email.trim().toLowerCase(),
+      );
+      if (user.password.trim() == password.trim()) {
         _currentUser = user;
         notifyListeners();
         return true;
@@ -81,6 +146,77 @@ class AppState extends ChangeNotifier {
   void logout() {
     _currentUser = null;
     notifyListeners();
+  }
+
+  // Admin: Add a new user (teacher, student, admin) with custom password
+  bool addUser(String name, String email, String password, UserRole role, {String? groupId}) {
+    final cleanEmail = email.trim().toLowerCase();
+    if (users.any((u) => u.email.trim().toLowerCase() == cleanEmail)) {
+      return false; // Email already taken
+    }
+
+    final newId = 'u_${DateTime.now().millisecondsSinceEpoch}';
+    final newUser = User(
+      id: newId,
+      name: name.trim(),
+      role: role,
+      email: cleanEmail,
+      password: password.trim().isEmpty ? '12345' : password.trim(),
+      groupId: role == UserRole.student ? groupId : null,
+      groupIds: role == UserRole.teacher ? [] : null,
+    );
+    users.add(newUser);
+
+    if (role == UserRole.student && groupId != null) {
+      assignStudentToGroup(newId, groupId);
+    }
+
+    _saveToStorage();
+    notifyListeners();
+    return true;
+  }
+
+  // Admin: Update user details or change password
+  void updateUser(String userId, String name, String email, String password, {String? groupId}) {
+    try {
+      final user = users.firstWhere((u) => u.id == userId);
+      user.name = name.trim();
+      user.email = email.trim().toLowerCase();
+      if (password.trim().isNotEmpty) {
+        user.password = password.trim();
+      }
+
+      if (user.role == UserRole.student && groupId != null && groupId != user.groupId) {
+        assignStudentToGroup(userId, groupId);
+      }
+
+      _saveToStorage();
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  // Admin: Delete user
+  void deleteUser(String userId) {
+    if (_currentUser?.id == userId) return;
+
+    final userIndex = users.indexWhere((u) => u.id == userId);
+    if (userIndex != -1) {
+      final user = users[userIndex];
+      for (var g in groups) {
+        g.studentIds.remove(userId);
+      }
+      if (user.role == UserRole.teacher) {
+        for (var g in groups) {
+          if (g.teacherId == userId) {
+            g.teacherId = '';
+          }
+        }
+      }
+      paymentRecords.removeWhere((p) => p.studentId == userId);
+      users.removeAt(userIndex);
+      _saveToStorage();
+      notifyListeners();
+    }
   }
 
   // Admin: Create group with all detailed fields
@@ -100,7 +236,7 @@ class AppState extends ChangeNotifier {
     String status,
     String note,
   ) {
-    final newId = 'g${groups.length + 1}';
+    final newId = 'g_${DateTime.now().millisecondsSinceEpoch}';
     final newGroup = StudyGroup(
       id: newId,
       name: name,
@@ -126,15 +262,15 @@ class AppState extends ChangeNotifier {
       teacher.groupIds!.add(newId);
     } catch (_) {}
 
-    // Assign students to group and initialize payment record
     const currentMonth = '2025-03';
     for (var studentId in studentIds) {
       try {
         final student = users.firstWhere((u) => u.id == studentId);
         student.groupId = newId;
 
-        // Add payment record if not exists
-        final existingPayment = paymentRecords.indexWhere((p) => p.studentId == studentId && p.groupId == newId && p.month == currentMonth);
+        final existingPayment = paymentRecords.indexWhere(
+          (p) => p.studentId == studentId && p.groupId == newId && p.month == currentMonth,
+        );
         if (existingPayment == -1) {
           paymentRecords.add(PaymentRecord(
             studentId: studentId,
@@ -147,10 +283,11 @@ class AppState extends ChangeNotifier {
       } catch (_) {}
     }
 
+    _saveToStorage();
     notifyListeners();
   }
 
-  // Admin: Update group with all detailed fields
+  // Admin: Update group
   void updateGroup(
     String groupId,
     String name,
@@ -171,7 +308,7 @@ class AppState extends ChangeNotifier {
     try {
       final group = groups.firstWhere((g) => g.id == groupId);
       final oldTeacherId = group.teacherId;
-      
+
       group.name = name;
       group.courseName = courseName;
       group.teacherId = teacherId;
@@ -187,22 +324,25 @@ class AppState extends ChangeNotifier {
       group.status = status;
       group.note = note;
 
-      // Update payment record totals
       for (var p in paymentRecords) {
         if (p.groupId == groupId) {
           p.totalAmount = price;
         }
       }
 
-      // Update students group assignment
       for (var s in users) {
         if (s.role == UserRole.student) {
           if (studentIds.contains(s.id)) {
             s.groupId = groupId;
-            // Ensure payment record
             const currentMonth = '2025-03';
             if (!paymentRecords.any((p) => p.studentId == s.id && p.groupId == groupId && p.month == currentMonth)) {
-              paymentRecords.add(PaymentRecord(studentId: s.id, groupId: groupId, month: currentMonth, totalAmount: price, paidAmount: 0.0));
+              paymentRecords.add(PaymentRecord(
+                studentId: s.id,
+                groupId: groupId,
+                month: currentMonth,
+                totalAmount: price,
+                paidAmount: 0.0,
+              ));
             }
           } else if (s.groupId == groupId) {
             s.groupId = null;
@@ -224,28 +364,21 @@ class AppState extends ChangeNotifier {
         } catch (_) {}
       }
 
+      _saveToStorage();
       notifyListeners();
     } catch (_) {}
   }
 
-  // Admin: Add a new user
-  void addUser(String name, String email, String password, UserRole role, {String? groupId}) {
-    final newId = 'u${users.length + 1}';
-    final newUser = User(
-      id: newId,
-      name: name,
-      role: role,
-      email: email,
-      password: password.isEmpty ? '12345' : password,
-      groupId: role == UserRole.student ? groupId : null,
-      groupIds: role == UserRole.teacher ? [] : null,
-    );
-    users.add(newUser);
-
-    if (role == UserRole.student && groupId != null) {
-      assignStudentToGroup(newId, groupId);
+  // Admin: Delete group
+  void deleteGroup(String groupId) {
+    groups.removeWhere((g) => g.id == groupId);
+    for (var u in users) {
+      if (u.groupId == groupId) u.groupId = null;
+      u.groupIds?.remove(groupId);
     }
-
+    attendanceRecords.removeWhere((a) => a.groupId == groupId);
+    paymentRecords.removeWhere((p) => p.groupId == groupId);
+    _saveToStorage();
     notifyListeners();
   }
 
@@ -274,6 +407,7 @@ class AppState extends ChangeNotifier {
         ));
       }
 
+      _saveToStorage();
       notifyListeners();
     } catch (_) {}
   }
@@ -288,6 +422,7 @@ class AppState extends ChangeNotifier {
       if (student.groupId == groupId) {
         student.groupId = null;
       }
+      _saveToStorage();
       notifyListeners();
     } catch (_) {}
   }
@@ -295,12 +430,13 @@ class AppState extends ChangeNotifier {
   // Save Attendance
   void saveAttendance(String groupId, String date, Map<String, bool> studentPresentMap) {
     attendanceRecords.removeWhere((r) => r.groupId == groupId && r.date == date);
-    
+
     attendanceRecords.add(AttendanceRecord(
       groupId: groupId,
       date: date,
       studentPresentMap: studentPresentMap,
     ));
+    _saveToStorage();
     notifyListeners();
   }
 
@@ -310,7 +446,18 @@ class AppState extends ChangeNotifier {
     if (index != -1) {
       paymentRecords[index].paidAmount = paidAmount;
     } else {
-      final group = groups.firstWhere((g) => g.id == groupId, orElse: () => StudyGroup(id: groupId, name: '', courseName: '', teacherId: '', studentIds: [], schedule: '', price: 500000));
+      final group = groups.firstWhere(
+        (g) => g.id == groupId,
+        orElse: () => StudyGroup(
+          id: groupId,
+          name: '',
+          courseName: '',
+          teacherId: '',
+          studentIds: [],
+          schedule: '',
+          price: 500000,
+        ),
+      );
       paymentRecords.add(PaymentRecord(
         studentId: studentId,
         groupId: groupId,
@@ -319,6 +466,7 @@ class AppState extends ChangeNotifier {
         paidAmount: paidAmount,
       ));
     }
+    _saveToStorage();
     notifyListeners();
   }
 }
