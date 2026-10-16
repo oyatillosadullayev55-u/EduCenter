@@ -54,6 +54,8 @@
       color: white;
       text-align: center;
       z-index: 9999;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
     }
     .spinner {
       width: 50px;
@@ -86,6 +88,28 @@
     <div class="title">O'quv Markazi CRM</div>
     <div class="subtitle">Tizim yuklanmoqda, iltimos kuting...</div>
   </div>
+  <script>
+    function removeLoading() {
+      var loading = document.getElementById('app-loading');
+      if (loading) {
+        loading.style.opacity = '0';
+        setTimeout(function() {
+          if (loading && loading.parentNode) {
+            loading.parentNode.removeChild(loading);
+          }
+        }, 300);
+      }
+    }
+    window.addEventListener('flutter-first-frame', removeLoading);
+    var observer = new MutationObserver(function() {
+      if (document.querySelector('flutter-view') || document.querySelector('flt-glass-pane') || document.querySelector('flt-scene-host')) {
+        removeLoading();
+        observer.disconnect();
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    setTimeout(removeLoading, 4000);
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
